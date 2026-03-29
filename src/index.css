@@ -1,0 +1,45 @@
+@import "tailwindcss";
+
+@theme {
+  --color-brand-pink: #FF6B81;
+  --color-brand-blue: #3B82F6;
+  --color-brand-yellow: #FFD54F;
+  --color-brand-purple: #8B5CF6;
+  --color-brand-black: #000000;
+  
+  --font-display: "Space Grotesk", "Inter", sans-serif;
+}
+
+@layer base {
+  body {
+    @apply bg-white text-brand-black font-sans antialiased;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-display tracking-[-0.01em] leading-[1.2];
+  }
+
+  p {
+    @apply leading-relaxed tracking-normal text-gray-700;
+  }
+}
+
+@layer components {
+  .brutalist-card {
+    @apply border-4 border-black rounded-3xl bg-white shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[10px_10px_0px_0px_rgba(0,0,0,1)];
+  }
+  
+  .brutalist-button {
+    @apply border-2 border-black rounded-xl px-6 py-3 font-bold flex items-center gap-2 transition-all active:translate-x-[2px] active:translate-y-[2px] active:shadow-none;
+  }
+  
+  .brutalist-button-primary {
+    @apply bg-brand-black text-white shadow-[4px_4px_0px_0px_rgba(0,0,0,0.3)];
+  }
+  
+  .brutalist-button-secondary {
+    @apply bg-white text-brand-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)];
+  }
+}
+
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap');
