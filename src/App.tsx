@@ -10,9 +10,14 @@ import { ArticlesAndTestimonials } from './components/ArticlesAndTestimonials';
 import { DailyLife } from './components/DailyLife';
 import { Footer } from './components/Footer';
 import { Marquee } from './components/Marquee';
+import { AdminDaily } from './components/AdminDaily';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('home');
+
+  if (window.location.pathname === '/admin') {
+    return <AdminDaily />;
+  }
 
   const renderContent = () => {
     switch (activeTab) {

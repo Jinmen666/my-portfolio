@@ -1,16 +1,17 @@
 import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Camera, Heart, MessageCircle, Share2, Plus, Upload, X, Star, Coffee, Music, Sun, Cloud } from 'lucide-react';
+import { Camera, Heart, MessageCircle, Share2, Star, Coffee, Music, Sun, Cloud, X } from 'lucide-react';
+import { supabase } from '../lib/supabaseClient';
 
 interface Comment {
-  id: number;
+  id: string;
   text: string;
   author: string;
   timestamp: string;
 }
 
 interface Post {
-  id: number;
+  id: string;
   image: string;
   caption: string;
   color: string;
@@ -22,17 +23,64 @@ interface Post {
 
 export const DailyLife: React.FC = () => {
   const [posts, setPosts] = useState<Post[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [pageError, setPageError] = useState<string | null>(null);
 
-  const [isModalOpen, setIsModalOpen] = useState(false);
   const [isCommentModalOpen, setIsCommentModalOpen] = useState(false);
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
-  const [newCommentText, setNewCommentText] = useState('');
-  const [newCaption, setNewCaption] = useState('');
-  const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [zoomedImage, setZoomedImage] = useState<string | null>(null);
   const [showShareToast, setShowShareToast] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const commentsEndRef = useRef<HTMLDivElement>(null);
+
+  const loadPosts = async () => {
+    const { data, error } = await supabase
+      .from('daily_posts')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+
+    const postIds: string[] = (data || []).map((row: any) => row.id);
+    const commentCounts = new Map<string, number>();
+    if (postIds.length > 0) {
+      const { data: commentRows, error: commentError } = await supabase
+        .from('daily_comments')
+        .select('post_id')
+        .in('post_id', postIds);
+
+      if (commentError) throw commentError;
+      (commentRows || []).forEach((row: any) => {
+        commentCounts.set(row.post_id, (commentCounts.get(row.post_id) || 0) + 1);
+      });
+    }
+
+    const normalized: Post[] = (data || []).map((row: any) => ({
+      id: row.id,
+      image: row.image_url,
+      caption: row.caption,
+      color: row.color,
+      likes: row.likes_count ?? 0,
+      comments: commentCounts.get(row.id) || 0,
+      liked: false,
+      commentsList: []
+    }));
+
+    setPosts(normalized);
+  };
+
+  React.useEffect(() => {
+    void (async () => {
+      try {
+        setIsLoading(true);
+        setPageError(null);
+        await loadPosts();
+      } catch (err: any) {
+        setPageError(err?.message || '加载失败');
+      } finally {
+        setIsLoading(false);
+      }
+    })();
+  }, []);
 
   // Auto-scroll to bottom when comments change
   React.useEffect(() => {
@@ -61,7 +109,7 @@ export const DailyLife: React.FC = () => {
     }
   };
 
-  const handleLike = (postId: number) => {
+  const handleLike = (postId: string) => {
     setPosts(prevPosts => prevPosts.map(post => {
       if (post.id === postId) {
         const isLiked = !post.liked;
@@ -75,77 +123,33 @@ export const DailyLife: React.FC = () => {
     }));
   };
 
-  const openCommentModal = (post: Post) => {
+  const openCommentModal = async (post: Post) => {
     setSelectedPost(post);
     setIsCommentModalOpen(true);
-  };
 
-  const handleAddComment = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newCommentText.trim() || !selectedPost) return;
+    try {
+      const { data, error } = await supabase
+        .from('daily_comments')
+        .select('*')
+        .eq('post_id', post.id)
+        .order('created_at', { ascending: true });
 
-    const newComment: Comment = {
-      id: Date.now(),
-      text: newCommentText,
-      author: "You",
-      timestamp: "Just now"
-    };
+      if (error) throw error;
 
-    setPosts(prevPosts => prevPosts.map(post => {
-      if (post.id === selectedPost.id) {
-        const updatedCommentsList = [...(post.commentsList || []), newComment];
-        return {
-          ...post,
-          comments: updatedCommentsList.length,
-          commentsList: updatedCommentsList
-        };
-      }
-      return post;
-    }));
+      const commentsList: Comment[] = (data || []).map((row: any) => ({
+        id: row.id,
+        text: row.text,
+        author: 'Guest',
+        timestamp: new Date(row.created_at).toLocaleString()
+      }));
 
-    setNewCommentText('');
-    // Update selected post to show new comment immediately
-    setSelectedPost(prev => prev ? {
-      ...prev,
-      comments: (prev.commentsList?.length || 0) + 1,
-      commentsList: [...(prev.commentsList || []), newComment]
-    } : null);
-  };
-
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setPreviewImage(reader.result as string);
-      };
-      reader.readAsDataURL(file);
+      setSelectedPost(prev => prev ? { ...prev, comments: commentsList.length, commentsList } : prev);
+      setPosts(prevPosts => prevPosts.map(p => p.id === post.id ? { ...p, comments: commentsList.length, commentsList } : p));
+    } catch (err: any) {
+      setPageError(err?.message || '加载评论失败');
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!previewImage) return;
-
-    const colors = ['bg-brand-yellow', 'bg-brand-blue', 'bg-brand-pink', 'bg-brand-purple', 'bg-white'];
-    const randomColor = colors[Math.floor(Math.random() * colors.length)];
-
-    const newPost: Post = {
-      id: Date.now(),
-      image: previewImage,
-      caption: newCaption || 'New moment shared! ✨',
-      color: randomColor,
-      likes: 0,
-      comments: 0,
-      liked: false,
-      commentsList: []
-    };
-
-    setPosts([newPost, ...posts]);
-    setIsModalOpen(false);
-    setNewCaption('');
-    setPreviewImage(null);
-  };
 
   return (
     <section className="pt-48 pb-20 px-6 max-w-7xl mx-auto relative overflow-hidden">
@@ -224,20 +228,29 @@ export const DailyLife: React.FC = () => {
         <p className="text-gray-600 max-w-2xl mx-auto text-xl mb-8 font-medium italic">
           “生活本没有意义，直到你开始赋予它意义。” ✨
         </p>
-        <button 
-          onClick={() => setIsModalOpen(true)}
-          className="brutalist-button brutalist-button-primary inline-flex items-center gap-2 group hover:scale-105 transition-transform"
-        >
-          <div className="bg-white text-black p-1 rounded-full group-hover:rotate-90 transition-transform">
-            <Plus size={20} strokeWidth={3} />
+        <div className="mt-6 text-gray-500 font-bold">仅站长可发布 / 删除（访客只读）</div>
+
+        {pageError && (
+          <div className="mt-8 max-w-2xl mx-auto bg-white border-4 border-black rounded-3xl p-5 text-left shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]">
+            <div className="font-black text-lg mb-2">发生了点问题</div>
+            <div className="text-gray-700 font-medium break-words">{pageError}</div>
           </div>
-          分享此时此刻
-        </button>
+        )}
       </div>
 
       <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-10 relative z-10">
         <AnimatePresence mode="wait">
-          {posts.length > 0 ? (
+          {isLoading ? (
+            <motion.div
+              key="loading-state"
+              initial={{ opacity: 0, scale: 0.98 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.98 }}
+              className="col-span-full flex items-center justify-center py-32 bg-white border-4 border-black rounded-[40px] shadow-[10px_10px_0px_0px_rgba(0,0,0,1)]"
+            >
+              <div className="font-black text-2xl">正在加载你的日常…</div>
+            </motion.div>
+          ) : posts.length > 0 ? (
             posts.map((post, index) => (
               <motion.div
                 key={post.id}
@@ -261,7 +274,7 @@ export const DailyLife: React.FC = () => {
               >
                 {/* Tape Effect */}
                 <div className="absolute -top-4 left-1/2 -translate-x-1/2 w-24 h-8 bg-white/40 backdrop-blur-sm border-2 border-black/10 -rotate-2 z-20 pointer-events-none group-hover/card:bg-white/60 transition-colors" />
-                
+
                 <div 
                   onClick={() => setZoomedImage(post.image)}
                   className="border-[6px] border-black rounded-[24px] overflow-hidden aspect-square mb-6 bg-gray-100 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] cursor-zoom-in group/img relative"
@@ -324,7 +337,13 @@ export const DailyLife: React.FC = () => {
                 <p className="text-3xl font-black mb-4">还没有分享过瞬间哦</p>
                 <p className="text-gray-500 mb-10 max-w-sm mx-auto font-medium">快来记录生活中的点点滴滴，让这里热闹起来吧！✨</p>
                 <button 
-                  onClick={() => setIsModalOpen(true)}
+                  onClick={() => {
+                    if (!authUserId) {
+                      setPageError('请先登录后再发布');
+                      return;
+                    }
+                    setIsModalOpen(true);
+                  }}
                   className="brutalist-button brutalist-button-primary text-xl px-10 py-5 hover:rotate-2 transition-transform"
                 >
                   发布我的第一条动态
@@ -465,112 +484,10 @@ export const DailyLife: React.FC = () => {
                   )}
                 </div>
 
-                <form onSubmit={handleAddComment} className="mt-auto pt-4 border-t-2 border-black/10">
-                  <div className="flex gap-2">
-                    <input 
-                      type="text" 
-                      value={newCommentText}
-                      onChange={(e) => setNewCommentText(e.target.value)}
-                      placeholder="Add a comment..."
-                      className="flex-1 p-3 border-2 border-black rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-blue/30 font-bold text-sm"
-                    />
-                    <button 
-                      type="submit"
-                      disabled={!newCommentText.trim()}
-                      className="bg-brand-blue text-white p-3 border-2 border-black rounded-xl shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:translate-y-[-2px] hover:translate-x-[-2px] hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:translate-y-[0px] active:translate-x-[0px] active:shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      Post
-                    </button>
-                  </div>
-                </form>
+                <div className="mt-auto pt-4 border-t-2 border-black/10 text-sm text-gray-500 font-bold">
+                  评论只读展示
+                </div>
               </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-      
-      {/* Upload Modal */}
-      <AnimatePresence>
-        {isModalOpen && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
-            <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setIsModalOpen(false)}
-              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-            />
-            <motion.div 
-              initial={{ scale: 0.9, opacity: 0, y: 20 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.9, opacity: 0, y: 20 }}
-              className="relative w-full max-w-lg bg-white border-4 border-black rounded-[32px] p-8 shadow-[12px_12px_0px_0px_rgba(0,0,0,1)]"
-            >
-              <button 
-                onClick={() => setIsModalOpen(false)}
-                className="absolute top-6 right-6 p-2 hover:bg-gray-100 rounded-full transition-colors"
-              >
-                <X size={24} />
-              </button>
-
-              <h3 className="text-3xl font-black mb-6">Share a Moment</h3>
-
-              <form onSubmit={handleSubmit} className="space-y-6">
-                <div 
-                  onClick={() => fileInputRef.current?.click()}
-                  className={`border-4 border-dashed border-black rounded-2xl p-8 flex flex-col items-center justify-center cursor-pointer transition-colors ${previewImage ? 'bg-gray-50' : 'hover:bg-gray-50'}`}
-                >
-                  <input 
-                    type="file" 
-                    ref={fileInputRef}
-                    onChange={handleImageUpload}
-                    accept="image/*"
-                    className="hidden"
-                  />
-                  
-                  {previewImage ? (
-                    <div className="relative w-full aspect-square rounded-xl overflow-hidden border-2 border-black">
-                      <img src={previewImage} className="w-full h-full object-cover" alt="Preview" />
-                      <button 
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setPreviewImage(null);
-                        }}
-                        className="absolute top-2 right-2 p-1 bg-white border-2 border-black rounded-full shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
-                      >
-                        <X size={16} />
-                      </button>
-                    </div>
-                  ) : (
-                    <>
-                      <div className="w-16 h-16 bg-brand-yellow border-4 border-black rounded-full flex items-center justify-center mb-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
-                        <Upload size={24} />
-                      </div>
-                      <p className="font-bold text-lg">Click to upload image</p>
-                      <p className="text-gray-500 text-sm">PNG, JPG up to 10MB</p>
-                    </>
-                  )}
-                </div>
-
-                <div>
-                  <label className="block font-bold mb-2">Caption</label>
-                  <textarea 
-                    value={newCaption}
-                    onChange={(e) => setNewCaption(e.target.value)}
-                    placeholder="What's on your mind?"
-                    className="w-full p-4 border-4 border-black rounded-xl focus:outline-none focus:ring-4 focus:ring-brand-yellow/30 resize-none h-24"
-                  />
-                </div>
-
-                <button 
-                  type="submit"
-                  disabled={!previewImage}
-                  className={`w-full brutalist-button brutalist-button-primary text-xl py-4 ${!previewImage ? 'opacity-50 cursor-not-allowed' : ''}`}
-                >
-                  Post Moment
-                </button>
-              </form>
             </motion.div>
           </div>
         )}
