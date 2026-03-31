@@ -10,113 +10,124 @@ export default defineConfig(({mode}) => {
   return {
     plugins: [
       {
-        name: 'admin-daily-api',
+        name: 'admin-api',
         configureServer(server) {
-          server.middlewares.use('/api/admin/daily-posts', async (req, res) => {
-            const respond = (status: number, payload: unknown) => {
-              res.statusCode = status;
-              res.setHeader('Content-Type', 'application/json');
-              res.end(JSON.stringify(payload));
-            };
+          const respond = (res: any, status: number, payload: unknown) => {
+            res.statusCode = status;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify(payload));
+          };
 
+          const parseBody = async (req: any) => {
+            const chunks: Buffer[] = [];
+            for await (const chunk of req) {
+              chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+            }
+            const raw = Buffer.concat(chunks).toString('utf8') || '{}';
+            return JSON.parse(raw);
+          };
+
+          const verifyToken = (token: string, adminToken: string) => {
+            if (!token || !adminToken) return false;
             try {
-              const adminToken = env.ADMIN_TOKEN;
-              const supabaseUrl = env.SUPABASE_URL;
-              const serviceRoleKey = env.SUPABASE_SERVICE_ROLE_KEY;
-
-              if (!adminToken || !supabaseUrl || !serviceRoleKey) {
-                respond(500, { error: 'Missing env vars for admin api' });
-                return;
-              }
-
-              const chunks: Buffer[] = [];
-              for await (const chunk of req) {
-                chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
-              }
-              const raw = Buffer.concat(chunks).toString('utf8') || '{}';
-              const body = JSON.parse(raw);
-
-              const token = String(body?.token || '');
               const aa = Buffer.from(token);
-              const bb = Buffer.from(String(adminToken));
-              if (!token || aa.length !== bb.length || !crypto.timingSafeEqual(aa, bb)) {
-                respond(401, { error: 'Unauthorized' });
-                return;
-              }
+              const bb = Buffer.from(adminToken);
+              return aa.length === bb.length && crypto.timingSafeEqual(aa, bb);
+            } catch {
+              return false;
+            }
+          };
+
+          // Daily Posts API
+          server.middlewares.use('/api/admin/daily-posts', async (req, res) => {
+            try {
+              const { ADMIN_TOKEN: adminToken, SUPABASE_URL: supabaseUrl, SUPABASE_SERVICE_ROLE_KEY: serviceRoleKey } = env;
+              if (!adminToken || !supabaseUrl || !serviceRoleKey) return respond(res, 500, { error: 'Missing env vars' });
+
+              const body = await parseBody(req);
+              if (!verifyToken(String(body?.token || ''), String(adminToken))) return respond(res, 401, { error: 'Unauthorized' });
 
               const supabase = createClient(supabaseUrl, serviceRoleKey);
 
               if (req.method === 'POST') {
-                const caption = String(body?.caption || '').trim();
-                const color = String(body?.color || 'bg-white');
-                const fileName = String(body?.fileName || 'image');
-                const dataUrl = String(body?.dataUrl || '');
-
+                const { caption, color = 'bg-white', fileName = 'image', dataUrl } = body;
                 const match = /^data:(image\/[a-zA-Z0-9.+-]+);base64,(.+)$/.exec(dataUrl);
-                if (!match) {
-                  respond(400, { error: 'Invalid dataUrl' });
-                  return;
-                }
-                const contentType = match[1];
+                if (!match) return respond(res, 400, { error: 'Invalid dataUrl' });
                 const buffer = Buffer.from(match[2], 'base64');
+                const imagePath = `admin/${Date.now()}-${crypto.randomBytes(8).toString('hex')}.${fileName.split('.').pop() || 'png'}`;
 
-                const ext = (fileName.split('.').pop() || '').toLowerCase();
-                const safeExt = ext && ext.length <= 10 ? ext : 'png';
-                const imagePath = `admin/${Date.now()}-${crypto.randomBytes(8).toString('hex')}.${safeExt}`;
-
-                const uploaded = await supabase.storage.from('daily-images').upload(imagePath, buffer, {
-                  contentType,
-                  upsert: false,
-                  cacheControl: '3600'
-                });
-                if (uploaded.error) throw uploaded.error;
+                const { error: uploadError } = await supabase.storage.from('daily-images').upload(imagePath, buffer, { contentType: match[1] });
+                if (uploadError) throw uploadError;
 
                 const imageUrl = supabase.storage.from('daily-images').getPublicUrl(imagePath).data.publicUrl;
-                const inserted = await supabase
-                  .from('daily_posts')
-                  .insert({
-                    user_id: crypto.randomUUID(),
-                    caption,
-                    image_path: imagePath,
-                    image_url: imageUrl,
-                    color
-                  })
-                  .select('id')
-                  .single();
-                if (inserted.error) throw inserted.error;
+                const { data, error: insertError } = await supabase.from('daily_posts').insert({
+                  user_id: crypto.randomUUID(),
+                  caption, image_path: imagePath, image_url: imageUrl, color
+                }).select('id').single();
+                if (insertError) throw insertError;
 
-                respond(200, { ok: true, id: inserted.data.id });
-                return;
+                return respond(res, 200, { ok: true, id: data.id });
               }
 
               if (req.method === 'DELETE') {
-                const postId = String(body?.postId || '');
-                if (!postId) {
-                  respond(400, { error: 'Missing postId' });
-                  return;
-                }
+                const { postId } = body;
+                const { data: row, error: fetchError } = await supabase.from('daily_posts').select('image_path').eq('id', postId).single();
+                if (fetchError) throw fetchError;
 
-                const row = await supabase
-                  .from('daily_posts')
-                  .select('image_path')
-                  .eq('id', postId)
-                  .single();
-                if (row.error) throw row.error;
+                await supabase.storage.from('daily-images').remove([row.image_path]);
+                const { error: delError } = await supabase.from('daily_posts').delete().eq('id', postId);
+                if (delError) throw delError;
 
-                const removed = await supabase.storage.from('daily-images').remove([row.data.image_path]);
-                if (removed.error) throw removed.error;
+                return respond(res, 200, { ok: true });
+              }
+              respond(res, 405, { error: 'Method not allowed' });
+            } catch (e: any) { respond(res, 400, { error: e.message }); }
+          });
 
-                const del = await supabase.from('daily_posts').delete().eq('id', postId);
-                if (del.error) throw del.error;
+          // Articles API
+          server.middlewares.use('/api/admin/articles', async (req, res) => {
+            try {
+              const { ADMIN_TOKEN: adminToken, SUPABASE_URL: supabaseUrl, SUPABASE_SERVICE_ROLE_KEY: serviceRoleKey } = env;
+              if (!adminToken || !supabaseUrl || !serviceRoleKey) return respond(res, 500, { error: 'Missing env vars' });
 
-                respond(200, { ok: true });
-                return;
+              const body = await parseBody(req);
+              if (!verifyToken(String(body?.token || ''), String(adminToken))) return respond(res, 401, { error: 'Unauthorized' });
+
+              const supabase = createClient(supabaseUrl, serviceRoleKey);
+
+              if (req.method === 'POST') {
+                const { title, summary, content, color = 'bg-white', fileName = 'cover', dataUrl } = body;
+                const match = /^data:(image\/[a-zA-Z0-9.+-]+);base64,(.+)$/.exec(dataUrl);
+                if (!match) return respond(res, 400, { error: 'Invalid dataUrl' });
+                const buffer = Buffer.from(match[2], 'base64');
+                const coverPath = `covers/${Date.now()}-${crypto.randomBytes(8).toString('hex')}.${fileName.split('.').pop() || 'png'}`;
+
+                const { error: uploadError } = await supabase.storage.from('article-covers').upload(coverPath, buffer, { contentType: match[1] });
+                if (uploadError) throw uploadError;
+
+                const coverUrl = supabase.storage.from('article-covers').getPublicUrl(coverPath).data.publicUrl;
+                const { data, error: insertError } = await supabase.from('articles').insert({
+                  user_id: crypto.randomUUID(),
+                  title, summary, content, cover_path: coverPath, cover_url: coverUrl, color
+                }).select('id').single();
+                if (insertError) throw insertError;
+
+                return respond(res, 200, { ok: true, id: data.id });
               }
 
-              respond(405, { error: 'Method not allowed' });
-            } catch (e: any) {
-              respond(400, { error: e?.message || 'Bad request' });
-            }
+              if (req.method === 'DELETE') {
+                const { articleId } = body;
+                const { data: row, error: fetchError } = await supabase.from('articles').select('cover_path').eq('id', articleId).single();
+                if (fetchError) throw fetchError;
+
+                await supabase.storage.from('article-covers').remove([row.cover_path]);
+                const { error: delError } = await supabase.from('articles').delete().eq('id', articleId);
+                if (delError) throw delError;
+
+                return respond(res, 200, { ok: true });
+              }
+              respond(res, 405, { error: 'Method not allowed' });
+            } catch (e: any) { respond(res, 400, { error: e.message }); }
           });
         },
       },

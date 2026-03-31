@@ -11,12 +11,17 @@ import { DailyLife } from './components/DailyLife';
 import { Footer } from './components/Footer';
 import { Marquee } from './components/Marquee';
 import { AdminDaily } from './components/AdminDaily';
+import { AdminArticles } from './components/AdminArticles';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('home');
 
   if (window.location.pathname === '/admin') {
     return <AdminDaily />;
+  }
+  
+  if (window.location.pathname === '/admin/articles') {
+    return <AdminArticles />;
   }
 
   const renderContent = () => {
