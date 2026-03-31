@@ -14,7 +14,7 @@ export const ArticlesAndTestimonials: React.FC = () => {
       {/* Articles */}
       <div>
         <div className="flex flex-col md:flex-row md:items-end justify-between mb-12 gap-6">
-          <h2 className="text-4xl lg:text-5xl font-bold leading-tight tracking-tight">Articles & News</h2>
+          <h2 className="text-4xl lg:text-5xl font-bold leading-tight tracking-tight">文章与资讯</h2>
           <button 
             onClick={() => setShowAll(!showAll)}
             className="brutalist-button brutalist-button-secondary"

@@ -228,7 +228,6 @@ export const DailyLife: React.FC = () => {
         <p className="text-gray-600 max-w-2xl mx-auto text-xl mb-8 font-medium italic">
           “生活本没有意义，直到你开始赋予它意义。” ✨
         </p>
-        <div className="mt-6 text-gray-500 font-bold">仅站长可发布 / 删除（访客只读）</div>
 
         {pageError && (
           <div className="mt-8 max-w-2xl mx-auto bg-white border-4 border-black rounded-3xl p-5 text-left shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]">
@@ -241,15 +240,31 @@ export const DailyLife: React.FC = () => {
       <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-10 relative z-10">
         <AnimatePresence mode="wait">
           {isLoading ? (
-            <motion.div
-              key="loading-state"
-              initial={{ opacity: 0, scale: 0.98 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.98 }}
-              className="col-span-full flex items-center justify-center py-32 bg-white border-4 border-black rounded-[40px] shadow-[10px_10px_0px_0px_rgba(0,0,0,1)]"
-            >
-              <div className="font-black text-2xl">正在加载你的日常…</div>
-            </motion.div>
+            Array.from({ length: 6 }).map((_, i) => (
+              <motion.div
+                key={`loading-${i}`}
+                initial={{ opacity: 0, y: 12, scale: 0.98 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.98 }}
+                transition={{ duration: 0.2, delay: i * 0.03 }}
+                className="brutalist-card p-6 bg-white/70 flex flex-col h-full"
+              >
+                <div className="border-[6px] border-black rounded-[24px] overflow-hidden aspect-square mb-6 bg-gray-200 animate-pulse" />
+                <div className="flex-1 flex flex-col">
+                  <div className="flex items-start justify-between gap-4 mb-4">
+                    <div className="h-6 w-3/4 bg-gray-200 rounded-lg animate-pulse" />
+                    <div className="shrink-0 w-10 h-10 bg-gray-200 rounded-full border-4 border-black animate-pulse" />
+                  </div>
+                  <div className="mt-auto flex items-center justify-between pt-6 border-t-[4px] border-black">
+                    <div className="flex items-center gap-6">
+                      <div className="h-6 w-16 bg-gray-200 rounded-lg animate-pulse" />
+                      <div className="h-6 w-16 bg-gray-200 rounded-lg animate-pulse" />
+                    </div>
+                    <div className="h-10 w-10 bg-gray-200 rounded-full animate-pulse" />
+                  </div>
+                </div>
+              </motion.div>
+            ))
           ) : posts.length > 0 ? (
             posts.map((post, index) => (
               <motion.div
@@ -335,19 +350,7 @@ export const DailyLife: React.FC = () => {
                   <Camera size={48} className="text-gray-300" />
                 </div>
                 <p className="text-3xl font-black mb-4">还没有分享过瞬间哦</p>
-                <p className="text-gray-500 mb-10 max-w-sm mx-auto font-medium">快来记录生活中的点点滴滴，让这里热闹起来吧！✨</p>
-                <button 
-                  onClick={() => {
-                    if (!authUserId) {
-                      setPageError('请先登录后再发布');
-                      return;
-                    }
-                    setIsModalOpen(true);
-                  }}
-                  className="brutalist-button brutalist-button-primary text-xl px-10 py-5 hover:rotate-2 transition-transform"
-                >
-                  发布我的第一条动态
-                </button>
+                <p className="text-gray-500 max-w-sm mx-auto font-medium">站长可在管理页发布动态（/admin）。</p>
               </div>
             </motion.div>
           )}
