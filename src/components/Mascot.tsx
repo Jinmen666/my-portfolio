@@ -35,7 +35,11 @@ export const Mascot: React.FC = () => {
   };
 
   return (
-    <div className="fixed bottom-10 right-10 z-50 flex flex-col items-center gap-4 hidden md:flex">
+    <div 
+      className="fixed bottom-10 right-10 z-50 flex flex-col items-center gap-4 hidden md:flex"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
       {/* Scroll Top Button */}
       <AnimatePresence>
         {showScrollTop && (
@@ -43,8 +47,11 @@ export const Mascot: React.FC = () => {
             initial={{ opacity: 0, y: 10, scale: 0.5 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 10, scale: 0.5 }}
-            onClick={scrollToTop}
-            className="w-12 h-12 bg-white border-4 border-black rounded-xl shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] flex items-center justify-center hover:bg-brand-blue hover:text-white transition-colors"
+            onClick={(e) => {
+              e.stopPropagation();
+              scrollToTop();
+            }}
+            className="w-12 h-12 bg-white border-4 border-black rounded-xl shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] flex items-center justify-center hover:bg-brand-blue hover:text-white transition-colors pointer-events-auto"
           >
             <ArrowUp size={24} strokeWidth={3} />
           </motion.button>
@@ -52,8 +59,6 @@ export const Mascot: React.FC = () => {
       </AnimatePresence>
 
       <motion.div
-        onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => setIsHovered(false)}
         drag
         dragConstraints={{ left: -100, right: 100, top: -100, bottom: 100 }}
         whileHover={{ scale: 1.1 }}
@@ -78,14 +83,28 @@ export const Mascot: React.FC = () => {
           {isHovered && (
             <motion.div
               initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: -80 }}
+              animate={{ opacity: 1, x: -60 }}
               exit={{ opacity: 0, x: 20 }}
-              className="absolute top-0 flex flex-col gap-2"
+              className="absolute top-0 flex flex-col gap-2 z-40"
             >
-              <button onClick={toggleTheme} title="切换主题" className="w-10 h-10 bg-brand-yellow border-2 border-black rounded-lg shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] flex items-center justify-center hover:translate-y-[-2px] transition-transform">
+              <button 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggleTheme();
+                }} 
+                title="切换主题" 
+                className="w-10 h-10 bg-brand-yellow border-2 border-black rounded-lg shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] flex items-center justify-center hover:translate-y-[-2px] transition-transform pointer-events-auto"
+              >
                 {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
               </button>
-              <button onClick={drinkCoffee} title="喝咖啡" className="w-10 h-10 bg-brand-pink border-2 border-black rounded-lg shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] flex items-center justify-center hover:translate-y-[-2px] transition-transform">
+              <button 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  drinkCoffee();
+                }} 
+                title="喝咖啡" 
+                className="w-10 h-10 bg-brand-pink border-2 border-black rounded-lg shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] flex items-center justify-center hover:translate-y-[-2px] transition-transform pointer-events-auto"
+              >
                 <Coffee size={18} />
               </button>
             </motion.div>
