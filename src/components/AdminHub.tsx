@@ -14,6 +14,15 @@ import {
 
 const ADMIN_TOKEN_STORAGE_KEY = 'daily_admin_token';
 
+type AdminMenuItem = {
+  title: string;
+  desc: string;
+  icon: React.ReactNode;
+  path: string;
+  color: string;
+  disabled?: boolean;
+};
+
 export const AdminHub: React.FC = () => {
   const [token, setToken] = useState('');
   const [savedToken, setSavedToken] = useState<string>('');
@@ -37,7 +46,7 @@ export const AdminHub: React.FC = () => {
     localStorage.removeItem(ADMIN_TOKEN_STORAGE_KEY);
   };
 
-  const menuItems = [
+  const menuItems: AdminMenuItem[] = [
     {
       title: '日常管理',
       desc: '发布、删除您的生活瞬间与摄影动态。',
