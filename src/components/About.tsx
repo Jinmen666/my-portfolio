@@ -37,6 +37,10 @@ const ICON_MAP: Record<string, React.ReactNode> = {
   tv: <Tv />,
   book: <BookOpen />,
   wrench: <Wrench />,
+  star: <Star />,
+  heart: <Heart />,
+  ghost: <Ghost />,
+  map: <MapPin />,
 };
 
 const FloatingDecoration: React.FC<{ 

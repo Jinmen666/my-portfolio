@@ -10,6 +10,7 @@ import { ArticlesAndTestimonials } from './components/ArticlesAndTestimonials';
 import { DailyLife } from './components/DailyLife';
 import { Footer } from './components/Footer';
 import { Marquee } from './components/Marquee';
+import { Mascot } from './components/Mascot';
 import { AdminDaily } from './components/AdminDaily';
 import { AdminArticles } from './components/AdminArticles';
 import { AdminProjects } from './components/AdminProjects';
@@ -129,6 +130,7 @@ export default function App() {
       </main>
 
       <Marquee />
+      <Mascot />
       <Footer setActiveTab={setActiveTab} />
       
       {/* Floating Chat Bubble */}
