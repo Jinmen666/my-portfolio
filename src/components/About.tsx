@@ -89,7 +89,7 @@ export const About: React.FC = () => {
     major: '计算机应用工程',
     job: '摆烂的学生',
     bio: '俺出生在山东菏泽曹县的一个小村子长大。曹县这个县前几年有个梗（山东菏泽曹县牛B666我的宝贝😁😁）\n\n我是一只高精力死宅，对出去游山玩水无感，但脑子里 idea 疯狂溢出。现实中轻微社恐，但在网络上结交了一群素未谋面的电子好友！\n\n目前是一名计算机应用工程专业的学生，平时除了学习就是在探索数字世界的奥秘。',
-    statement: '每一个大多数人看起||',
+    statement: '在平庸的生活里，也要打捞起那些发光的瞬间 ✨',
     recent_reading: '《纳瓦尔宝典》',
     recent_watching: '整太线失事视频',
     recent_interest: 'AI 编程',
@@ -119,7 +119,7 @@ export const About: React.FC = () => {
   ];
 
   return (
-    <section className="pt-48 pb-20 px-6 max-w-7xl mx-auto space-y-32 overflow-hidden bg-[radial-gradient(#e5e7eb_1.5px,transparent_1.5px)] [background-size:40px_40px] relative">
+    <section className="pt-48 pb-20 px-6 max-w-7xl mx-auto space-y-32 overflow-hidden bg-[#FFFBF0] bg-[radial-gradient(#FFD54F_1.5px,transparent_1.5px)] [background-size:40px_40px] relative">
       {/* Global Background Decorations */}
       <FloatingDecoration className="top-20 right-[10%] text-brand-yellow/20" animate={{ rotate: [0, 360] }} transition={{ duration: 15, repeat: Infinity, ease: "linear" }}>
         <Star size={60} fill="currentColor" />
@@ -172,7 +172,7 @@ export const About: React.FC = () => {
           className="relative max-w-md mx-auto lg:ml-auto"
         >
           {/* ID CARD UI */}
-          <div className="brutalist-card bg-white p-0 overflow-hidden shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] border-[6px] border-black rounded-[40px]">
+          <div className="brutalist-card bg-[#FDF6E3] p-0 overflow-hidden shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] border-[6px] border-black rounded-[40px]">
             <div className="bg-brand-green p-6 border-b-[6px] border-black flex justify-between items-center">
               <div>
                 <h3 className="text-2xl font-black">ID CARD</h3>
@@ -223,9 +223,20 @@ export const About: React.FC = () => {
           className="relative inline-block mx-auto"
         >
           <div className="absolute -top-4 -left-4 bg-white border-2 border-black px-2 py-0.5 font-black text-[10px] z-10">STATEMENT</div>
-          <div className="bg-brand-yellow text-2xl md:text-4xl font-black px-12 py-6 border-4 border-black shadow-[10px_10px_0px_0px_rgba(0,0,0,1)] transform rotate-1 min-w-[200px]">
+          <motion.div 
+            animate={{ 
+              scale: [1, 1.05, 1],
+              rotate: [1, 0.5, 1, 1.5, 1] 
+            }}
+            transition={{ 
+              duration: 5, 
+              repeat: Infinity, 
+              ease: "easeInOut" 
+            }}
+            className="bg-brand-yellow text-2xl md:text-4xl font-black px-12 py-6 border-4 border-black shadow-[10px_10px_0px_0px_rgba(0,0,0,1)] transform rotate-1 min-w-[200px]"
+          >
             {d.statement}
-          </div>
+          </motion.div>
         </motion.div>
         
         <div className="space-y-4 max-w-2xl mx-auto">
@@ -235,7 +246,7 @@ export const About: React.FC = () => {
       </div>
 
       {/* 3. Recent Updates Section */}
-      <div className="relative py-24 px-10 bg-white/40 backdrop-blur-sm rounded-[60px] border-[6px] border-black shadow-[20px_20px_0px_0px_rgba(0,0,0,0.1)] overflow-hidden">
+      <div className="relative py-24 px-10 bg-brand-blue/5 backdrop-blur-sm rounded-[60px] border-[6px] border-black shadow-[20px_20px_0px_0px_rgba(0,0,0,0.1)] overflow-hidden">
         {/* Decorative elements - Doodle background */}
         <FloatingDecoration className="top-10 left-10 text-brand-blue/10" animate={{ rotate: 360 }} transition={{ duration: 20, repeat: Infinity, ease: "linear" }}>
           <Star size={120} fill="currentColor" strokeWidth={0.5} />
