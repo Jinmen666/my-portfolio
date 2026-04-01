@@ -123,7 +123,7 @@ export const About: React.FC = () => {
   ];
 
   return (
-    <section className="pt-48 pb-20 px-6 max-w-7xl mx-auto space-y-32 overflow-hidden bg-[#FFFBF0] bg-[radial-gradient(#FFD54F_1.5px,transparent_1.5px)] [background-size:40px_40px] relative">
+    <section className="pt-48 pb-20 px-6 max-w-7xl mx-auto space-y-32 overflow-hidden bg-[var(--page-bg)] bg-[radial-gradient(var(--dot-color)_1.5px,transparent_1.5px)] [background-size:40px_40px] relative">
       {/* Global Background Decorations */}
       <FloatingDecoration className="top-20 right-[10%] text-brand-yellow/20" animate={{ rotate: [0, 360] }} transition={{ duration: 15, repeat: Infinity, ease: "linear" }}>
         <Star size={60} fill="currentColor" />

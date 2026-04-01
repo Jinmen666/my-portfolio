@@ -13,19 +13,27 @@ import {
   Gamepad2,
   Tv,
   BookOpen,
-  Wrench
+  Wrench,
+  Star,
+  Heart,
+  Ghost,
+  MapPin
 } from 'lucide-react';
 
 const ADMIN_TOKEN_STORAGE_KEY = 'daily_admin_token';
 
 const ICONS = [
-  { type: 'rocket', icon: <Rocket size={18} /> },
-  { type: 'briefcase', icon: <Briefcase size={18} /> },
-  { type: 'code', icon: <Code size={18} /> },
-  { type: 'gamepad', icon: <Gamepad2 size={18} /> },
-  { type: 'tv', icon: <Tv size={18} /> },
-  { type: 'book', icon: <BookOpen size={18} /> },
-  { type: 'wrench', icon: <Wrench size={18} /> },
+  { type: 'rocket', icon: <Rocket size={18} />, label: '火箭' },
+  { type: 'briefcase', icon: <Briefcase size={18} />, label: '事业' },
+  { type: 'code', icon: <Code size={18} />, label: '编程' },
+  { type: 'gamepad', icon: <Gamepad2 size={18} />, label: '游戏' },
+  { type: 'tv', icon: <Tv size={18} />, label: '影视' },
+  { type: 'book', icon: <BookOpen size={18} />, label: '阅读' },
+  { type: 'wrench', icon: <Wrench size={18} />, label: '工具' },
+  { type: 'star', icon: <Star size={18} />, label: '收藏' },
+  { type: 'heart', icon: <Heart size={18} />, label: '喜爱' },
+  { type: 'ghost', icon: <Ghost size={18} />, label: '神秘' },
+  { type: 'map', icon: <MapPin size={18} />, label: '地点' },
 ];
 
 export const AdminProfile: React.FC = () => {
@@ -119,9 +127,9 @@ export const AdminProfile: React.FC = () => {
 
   const addExperience = () => {
     setExperiences([...experiences, { 
-      date: '2026.01', 
-      title: '新任务', 
-      description: '描述...', 
+      date: '2026.04', 
+      title: '未命名的冒险', 
+      description: '点击这里编辑你的主线或支线任务...', 
       type: 'side', 
       icon_type: 'rocket',
       sort_order: experiences.length 
@@ -292,26 +300,36 @@ export const AdminProfile: React.FC = () => {
                     setExperiences(newExps);
                   }} className="w-full p-2 border-2 border-black rounded font-bold text-sm h-16 resize-none" placeholder="描述" />
                   
-                  <div className="flex items-center justify-between">
-                    <div className="flex gap-1">
+                  <div className="space-y-2">
+                    <label className="block font-black text-[10px] uppercase opacity-40 leading-none">任务图标选择</label>
+                    <div className="flex flex-wrap gap-2">
                       {ICONS.map(i => (
-                        <button 
-                          key={i.type}
-                          onClick={() => {
-                            const newExps = [...experiences];
-                            newExps[idx].icon_type = i.type;
-                            setExperiences(newExps);
-                          }}
-                          className={`p-1 border-2 border-black rounded ${exp.icon_type === i.type ? 'bg-brand-yellow' : 'bg-white'}`}
-                        >
-                          {i.icon}
-                        </button>
+                        <div key={i.type} className="relative group/tooltip">
+                          <button 
+                            onClick={() => {
+                              const newExps = [...experiences];
+                              newExps[idx].icon_type = i.type;
+                              setExperiences(newExps);
+                            }}
+                            className={`w-8 h-8 flex items-center justify-center border-2 border-black rounded-lg transition-all active:translate-x-0.5 active:translate-y-0.5 ${exp.icon_type === i.type ? 'bg-brand-yellow shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]' : 'bg-white hover:bg-gray-100'}`}
+                          >
+                            {i.icon}
+                          </button>
+                          
+                          {/* Tooltip */}
+                          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-black text-white text-[10px] font-black rounded border border-white opacity-0 group-hover/tooltip:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-30">
+                            {i.label}
+                            {/* Arrow */}
+                            <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-black"></div>
+                          </div>
+                        </div>
                       ))}
                     </div>
-                    <div className="flex gap-2">
-                      <button onClick={() => saveExperience(exp)} className="p-2 bg-brand-green border-2 border-black rounded-lg"><Save size={16} /></button>
-                      <button onClick={() => deleteExperience(exp.id)} className="p-2 bg-red-400 border-2 border-black rounded-lg"><Trash2 size={16} /></button>
-                    </div>
+                  </div>
+                  
+                  <div className="flex justify-end gap-3 pt-2 border-t-2 border-black/5">
+                    <button onClick={() => deleteExperience(exp.id)} className="flex items-center gap-1 px-3 py-1 bg-red-400 border-2 border-black rounded-lg font-black text-[10px] shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-x-0.5 active:translate-y-0.5"><Trash2 size={12} /> 删除</button>
+                    <button onClick={() => saveExperience(exp)} className="flex items-center gap-1 px-3 py-1 bg-brand-green border-2 border-black rounded-lg font-black text-[10px] shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-x-0.5 active:translate-y-0.5"><Save size={12} /> 同步此项</button>
                   </div>
                 </div>
               ))}

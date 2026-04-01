@@ -9,6 +9,14 @@ export const Mascot: React.FC = () => {
   const [message, setMessage] = useState('拽我一下试试！✨');
 
   useEffect(() => {
+    const stored = localStorage.getItem('site_theme');
+    const preferred = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const shouldDark = stored ? stored === 'night' : preferred;
+    setIsDarkMode(shouldDark);
+    document.documentElement.classList.toggle('theme-night', shouldDark);
+  }, []);
+
+  useEffect(() => {
     const handleScroll = () => {
       setShowScrollTop(window.scrollY > 300);
     };
@@ -23,8 +31,11 @@ export const Mascot: React.FC = () => {
   };
 
   const toggleTheme = () => {
-    setIsDarkMode(!isDarkMode);
-    setMessage(isDarkMode ? '天亮啦！☀️' : '晚安时间！🌙');
+    const next = !isDarkMode;
+    setIsDarkMode(next);
+    localStorage.setItem('site_theme', next ? 'night' : 'day');
+    document.documentElement.classList.toggle('theme-night', next);
+    setMessage(next ? '晚安时间！🌙' : '天亮啦！☀️');
     setTimeout(() => setMessage('拽我一下试试！✨'), 2000);
   };
 

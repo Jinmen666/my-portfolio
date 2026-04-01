@@ -12,8 +12,32 @@
 }
 
 @layer base {
+  :root {
+    --page-bg: #ffffff;
+    --page-fg: #000000;
+    --page-muted: #334155;
+    --surface-bg: #ffffff;
+    --surface-muted: #f8fafc;
+    --dot-color: #FFD54F;
+  }
+
+  .theme-night {
+    --page-bg: #0b1020;
+    --page-fg: #f8fafc;
+    --page-muted: #cbd5e1;
+    --surface-bg: #0f172a;
+    --surface-muted: #111827;
+    --dot-color: #1f2937;
+  }
+
   body {
-    @apply bg-white text-brand-black font-sans antialiased;
+    @apply font-sans antialiased;
+    background-color: var(--page-bg);
+    color: var(--page-fg);
+  }
+
+  .theme-night body {
+    color-scheme: dark;
   }
 
   h1, h2, h3, h4, h5, h6 {
@@ -22,6 +46,42 @@
 
   p {
     @apply leading-relaxed tracking-normal text-gray-700;
+  }
+
+  .theme-night p {
+    color: var(--page-muted);
+  }
+
+  .theme-night .text-gray-800 {
+    color: var(--page-fg) !important;
+  }
+
+  .theme-night .text-gray-700 {
+    color: var(--page-muted) !important;
+  }
+
+  .theme-night .text-gray-600 {
+    color: var(--page-muted) !important;
+  }
+
+  .theme-night .text-gray-500 {
+    color: color-mix(in oklab, var(--page-muted) 80%, var(--page-fg)) !important;
+  }
+
+  .theme-night .text-black\/70 {
+    color: color-mix(in oklab, var(--page-fg) 80%, transparent) !important;
+  }
+
+  .theme-night .bg-white {
+    background-color: var(--surface-bg) !important;
+  }
+
+  .theme-night .bg-gray-50 {
+    background-color: var(--surface-muted) !important;
+  }
+
+  .theme-night .bg-gray-100\/50 {
+    background-color: color-mix(in oklab, var(--surface-bg) 60%, transparent) !important;
   }
 }
 
