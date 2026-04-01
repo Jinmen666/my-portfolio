@@ -136,9 +136,52 @@ export const ArticlesAndTestimonials: React.FC = () => {
 
   return (
     <section className="pt-48 pb-20 px-6 max-w-7xl mx-auto min-h-screen">
-      <div className="mb-16">
-        <h2 className="text-5xl lg:text-6xl font-black mb-4 tracking-tighter">文章专栏</h2>
-        <div className="w-24 h-4 bg-brand-yellow border-4 border-black"></div>
+      <div className="mb-20">
+        <h2 className="text-5xl lg:text-8xl font-black mb-8 leading-tight tracking-tighter flex flex-wrap items-center gap-y-4">
+          <span className="flex items-center">
+            {['文', '章', '专', '栏'].map((char, i) => (
+              <motion.span
+                key={`article-title-${i}`}
+                initial={{ opacity: 0, y: 20, rotate: -10 }}
+                whileInView={{ opacity: 1, y: 0, rotate: i % 2 === 0 ? -5 : 5 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.1 }}
+                className="inline-block hover:scale-110 transition-transform cursor-default"
+              >
+                {char}
+              </motion.span>
+            ))}
+          </span>
+          <span className="flex items-center ml-4">
+            {'BLOG'.split('').map((char, i) => (
+              <motion.span
+                key={`article-en-${i}`}
+                initial={{ opacity: 0, scale: 0.5, rotate: 20 }}
+                whileInView={{ opacity: 1, scale: 1, rotate: i % 2 === 0 ? 3 : -3 }}
+                viewport={{ once: true }}
+                transition={{
+                  type: "spring",
+                  stiffness: 260,
+                  damping: 20,
+                  delay: 0.4 + i * 0.1
+                }}
+                className="relative inline-block px-4 py-2 mx-1 text-white hover:-translate-y-2 transition-transform cursor-default text-3xl md:text-4xl"
+              >
+                <span className="relative z-10">{char}</span>
+                <span className={`absolute inset-0 bg-brand-yellow transform ${i % 2 === 0 ? '-rotate-3' : 'rotate-3'} rounded-xl border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]`}></span>
+              </motion.span>
+            ))}
+          </span>
+        </h2>
+        <motion.div 
+          initial={{ width: 0 }}
+          whileInView={{ width: '8rem' }}
+          viewport={{ once: true }}
+          transition={{ delay: 0.8, duration: 0.8, ease: "circOut" }}
+          className="h-4 bg-brand-yellow border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] relative"
+        >
+          <div className="absolute -right-2 -top-2 w-4 h-4 bg-white border-2 border-black rounded-full animate-bounce"></div>
+        </motion.div>
       </div>
 
       {isLoading ? (

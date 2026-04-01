@@ -151,12 +151,12 @@ export const AdminArticles: React.FC = () => {
         <button
           type="button"
           onClick={() => {
-            window.location.href = '/';
+            window.location.href = '/admin/hub';
           }}
           className="brutalist-button brutalist-button-secondary"
         >
           <ArrowLeft size={18} />
-          返回网站
+          管理中心
         </button>
         <div className="font-black text-2xl flex items-center gap-2">
           <FileText size={20} />

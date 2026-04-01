@@ -12,17 +12,43 @@ import { Footer } from './components/Footer';
 import { Marquee } from './components/Marquee';
 import { AdminDaily } from './components/AdminDaily';
 import { AdminArticles } from './components/AdminArticles';
+import { AdminProjects } from './components/AdminProjects';
+import { AdminHub } from './components/AdminHub';
+import { AdminProfile } from './components/AdminProfile';
+import { MessageSquare, X, Send, User, ExternalLink } from 'lucide-react';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('home');
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [chatMessage, setChatMessage] = useState('');
+
+  if (window.location.pathname === '/admin/hub') {
+    return <AdminHub />;
+  }
+
+  if (window.location.pathname === '/admin/profile') {
+    return <AdminProfile />;
+  }
 
   if (window.location.pathname === '/admin') {
     return <AdminDaily />;
   }
-  
+
   if (window.location.pathname === '/admin/articles') {
     return <AdminArticles />;
   }
+
+  if (window.location.pathname === '/admin/projects') {
+    return <AdminProjects />;
+  }
+
+  const handleChatSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!chatMessage.trim()) return;
+    alert(`收到您的留言：${chatMessage}\n（此功能为演示，实际消息将存储在数据库中）`);
+    setChatMessage('');
+    setIsChatOpen(false);
+  };
 
   const renderContent = () => {
     switch (activeTab) {
@@ -107,12 +133,41 @@ export default function App() {
       
       {/* Floating Chat Bubble */}
       <div className="fixed bottom-8 right-8 z-50">
-        <button className="w-16 h-16 bg-white border-4 border-black rounded-full shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] flex items-center justify-center hover:translate-y-[-2px] transition-transform">
-          <img
-            src="https://picsum.photos/seed/chat/100/100"
-            alt="Chat"
-            className="w-12 h-12 rounded-full border-2 border-black"
-          />
+        <AnimatePresence>
+          {isChatOpen && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.8, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.8, y: 20 }}
+              className="absolute bottom-20 right-0 w-80 brutalist-card bg-white p-6 shadow-[12px_12px_0px_0px_rgba(0,0,0,1)]"
+            >
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-xl font-black italic">给站长留言</h3>
+                <button onClick={() => setIsChatOpen(false)} className="p-1 hover:bg-gray-100 rounded-full">
+                  <X size={20} />
+                </button>
+              </div>
+              <form onSubmit={handleChatSubmit} className="space-y-4">
+                <textarea
+                  value={chatMessage}
+                  onChange={(e) => setChatMessage(e.target.value)}
+                  placeholder="有什么想说的吗？"
+                  className="w-full p-4 border-4 border-black rounded-xl font-bold focus:outline-none focus:ring-4 focus:ring-brand-yellow/20 h-32 resize-none"
+                />
+                <button type="submit" className="brutalist-button brutalist-button-primary w-full py-3 justify-center">
+                  发送消息
+                  <Send size={18} />
+                </button>
+              </form>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <button 
+          onClick={() => setIsChatOpen(!isChatOpen)}
+          className="w-16 h-16 bg-brand-yellow border-4 border-black rounded-full shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] flex items-center justify-center hover:translate-y-[-4px] transition-transform active:translate-y-0 active:shadow-none"
+        >
+          {isChatOpen ? <X size={32} /> : <MessageSquare size={32} />}
         </button>
       </div>
     </div>

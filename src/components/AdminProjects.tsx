@@ -1,43 +1,47 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
-import { Trash2, Upload, ArrowLeft, Lock, Plus } from 'lucide-react';
+import { Trash2, Upload, ArrowLeft, Lock, Plus, LayoutGrid, Globe } from 'lucide-react';
 
-type AdminPost = {
+type AdminProject = {
   id: string;
-  caption: string;
+  title: string;
+  description: string;
   image_url: string;
   image_path: string;
+  project_url: string;
   color: string;
   created_at: string;
 };
 
 const ADMIN_TOKEN_STORAGE_KEY = 'daily_admin_token';
 
-export const AdminDaily: React.FC = () => {
+export const AdminProjects: React.FC = () => {
   const [token, setToken] = useState('');
   const [savedToken, setSavedToken] = useState<string>('');
-  const [posts, setPosts] = useState<AdminPost[]>([]);
+  const [projects, setProjects] = useState<AdminProject[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const [caption, setCaption] = useState('');
-  const [color, setColor] = useState('bg-brand-yellow');
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [projectUrl, setProjectUrl] = useState('');
+  const [color, setColor] = useState('bg-white');
   const [file, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const canSubmit = useMemo(() => Boolean(savedToken && file && !isSubmitting), [savedToken, file, isSubmitting]);
+  const canSubmit = useMemo(() => Boolean(savedToken && title && file && !isSubmitting), [savedToken, title, file, isSubmitting]);
 
-  const loadPosts = async () => {
+  const loadProjects = async () => {
     setIsLoading(true);
     setError(null);
     try {
       const { data, error: selectError } = await supabase
-        .from('daily_posts')
-        .select('id, caption, image_url, image_path, color, created_at')
+        .from('projects')
+        .select('*')
         .order('created_at', { ascending: false });
       if (selectError) throw selectError;
-      setPosts((data || []) as AdminPost[]);
+      setProjects((data || []) as AdminProject[]);
     } catch (e: any) {
       setError(e?.message || '加载失败');
     } finally {
@@ -48,7 +52,7 @@ export const AdminDaily: React.FC = () => {
   useEffect(() => {
     const existing = localStorage.getItem(ADMIN_TOKEN_STORAGE_KEY) || '';
     setSavedToken(existing);
-    loadPosts();
+    loadProjects();
   }, []);
 
   useEffect(() => {
@@ -82,20 +86,22 @@ export const AdminDaily: React.FC = () => {
     reader.readAsDataURL(f);
   });
 
-  const createPost = async () => {
+  const createProject = async () => {
     if (!file) return;
     setIsSubmitting(true);
     setError(null);
     try {
       const dataUrl = await fileToDataUrl(file);
-      const res = await fetch('/api/admin/daily-posts', {
+      const res = await fetch('/api/admin/projects', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
           token: savedToken,
-          caption,
+          title,
+          description,
+          projectUrl,
           color,
           fileName: file.name,
           dataUrl
@@ -105,10 +111,12 @@ export const AdminDaily: React.FC = () => {
       if (!res.ok) {
         throw new Error(json?.error || '发布失败');
       }
-      setCaption('');
-      setColor('bg-brand-yellow');
+      setTitle('');
+      setDescription('');
+      setProjectUrl('');
+      setColor('bg-white');
       setFile(null);
-      await loadPosts();
+      await loadProjects();
     } catch (e: any) {
       setError(e?.message || '发布失败');
     } finally {
@@ -116,21 +124,22 @@ export const AdminDaily: React.FC = () => {
     }
   };
 
-  const deletePost = async (postId: string) => {
+  const deleteProject = async (projectId: string) => {
+    if (!confirm('确定要删除这个项目吗？')) return;
     setError(null);
     try {
-      const res = await fetch('/api/admin/daily-posts', {
+      const res = await fetch('/api/admin/projects', {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ token: savedToken, postId })
+        body: JSON.stringify({ token: savedToken, projectId })
       });
       const json = await res.json().catch(() => ({}));
       if (!res.ok) {
         throw new Error(json?.error || '删除失败');
       }
-      setPosts(prev => prev.filter(p => p.id !== postId));
+      setProjects(prev => prev.filter(p => p.id !== projectId));
     } catch (e: any) {
       setError(e?.message || '删除失败');
     }
@@ -150,8 +159,8 @@ export const AdminDaily: React.FC = () => {
           管理中心
         </button>
         <div className="font-black text-2xl flex items-center gap-2">
-          <Lock size={20} />
-          站长管理
+          <LayoutGrid size={20} />
+          项目管理
         </div>
       </div>
 
@@ -180,24 +189,22 @@ export const AdminDaily: React.FC = () => {
             </button>
           </div>
         )}
-        <div className="text-gray-500 font-medium mt-3">
-          这个页面不在导航里，只有知道地址的人才会访问；真正的写入权限由服务器端令牌控制。
-        </div>
       </div>
 
-      <div className="brutalist-card p-8 mb-10 bg-brand-yellow">
+      <div className="brutalist-card p-8 mb-10 bg-brand-pink/20">
         <div className="font-black text-xl mb-6 flex items-center gap-2">
           <Plus size={18} />
-          发布新动态
+          发布新项目
         </div>
         <div className="grid md:grid-cols-2 gap-8">
           <div>
+            <div className="font-black mb-2">项目预览图</div>
             <div
-              onClick={() => document.getElementById('admin-upload')?.click()}
+              onClick={() => document.getElementById('project-upload')?.click()}
               className="border-4 border-dashed border-black rounded-2xl p-6 cursor-pointer bg-white/80 hover:bg-white transition-colors"
             >
               <input
-                id="admin-upload"
+                id="project-upload"
                 type="file"
                 accept="image/*"
                 className="hidden"
@@ -207,7 +214,7 @@ export const AdminDaily: React.FC = () => {
                 }}
               />
               {previewUrl ? (
-                <div className="aspect-square rounded-xl overflow-hidden border-4 border-black">
+                <div className="aspect-video rounded-xl overflow-hidden border-4 border-black">
                   <img src={previewUrl} className="w-full h-full object-cover" alt="preview" />
                 </div>
               ) : (
@@ -224,12 +231,30 @@ export const AdminDaily: React.FC = () => {
 
           <div className="flex flex-col gap-5">
             <div>
-              <div className="font-black mb-2">文案</div>
+              <div className="font-black mb-2">标题</div>
+              <input
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="项目名称"
+                className="w-full p-4 border-4 border-black rounded-xl focus:outline-none focus:ring-4 focus:ring-brand-pink/30"
+              />
+            </div>
+            <div>
+              <div className="font-black mb-2">描述</div>
               <textarea
-                value={caption}
-                onChange={(e) => setCaption(e.target.value)}
-                placeholder="写点什么…"
-                className="w-full p-4 border-4 border-black rounded-xl focus:outline-none focus:ring-4 focus:ring-brand-yellow/30 resize-none h-28"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="简单介绍一下项目…"
+                className="w-full p-4 border-4 border-black rounded-xl focus:outline-none focus:ring-4 focus:ring-brand-pink/30 resize-none h-20"
+              />
+            </div>
+            <div>
+              <div className="font-black mb-2">项目链接 (可选)</div>
+              <input
+                value={projectUrl}
+                onChange={(e) => setProjectUrl(e.target.value)}
+                placeholder="https://..."
+                className="w-full p-4 border-4 border-black rounded-xl focus:outline-none focus:ring-4 focus:ring-brand-pink/30"
               />
             </div>
             <div>
@@ -239,33 +264,28 @@ export const AdminDaily: React.FC = () => {
                 onChange={(e) => setColor(e.target.value)}
                 className="w-full p-3 border-4 border-black rounded-xl font-bold bg-white"
               >
+                <option value="bg-white">白</option>
                 <option value="bg-brand-yellow">黄</option>
                 <option value="bg-brand-blue">蓝</option>
                 <option value="bg-brand-pink">粉</option>
                 <option value="bg-brand-purple">紫</option>
-                <option value="bg-white">白</option>
               </select>
             </div>
             <button
               type="button"
               disabled={!canSubmit}
-              onClick={createPost}
+              onClick={createProject}
               className={`brutalist-button brutalist-button-primary text-xl justify-center py-4 ${!canSubmit ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
-              {isSubmitting ? '发布中…' : '发布'}
+              {isSubmitting ? '发布中…' : '发布项目'}
             </button>
-            {!savedToken && (
-              <div className="text-gray-700 font-bold">
-                先设置管理员令牌才能发布。
-              </div>
-            )}
           </div>
         </div>
       </div>
 
       <div className="flex items-center justify-between mb-4">
-        <div className="font-black text-2xl">已有动态</div>
-        <button type="button" onClick={() => void loadPosts()} className="brutalist-button brutalist-button-secondary">
+        <div className="font-black text-2xl">已有项目</div>
+        <button type="button" onClick={() => void loadProjects()} className="brutalist-button brutalist-button-secondary">
           刷新
         </button>
       </div>
@@ -281,28 +301,41 @@ export const AdminDaily: React.FC = () => {
         <div className="brutalist-card p-10 bg-white">
           <div className="font-black text-xl">加载中…</div>
         </div>
-      ) : posts.length === 0 ? (
+      ) : projects.length === 0 ? (
         <div className="brutalist-card p-10 bg-white">
-          <div className="font-black text-xl">还没有动态</div>
+          <div className="font-black text-xl">还没有项目</div>
         </div>
       ) : (
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {posts.map((p) => (
+          {projects.map((p) => (
             <div key={p.id} className={`brutalist-card p-6 ${p.color} relative`}>
-              <div className="border-[6px] border-black rounded-[24px] overflow-hidden aspect-square mb-5 bg-gray-100">
-                <img src={p.image_url} alt={p.caption} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+              <div className="border-[6px] border-black rounded-[24px] overflow-hidden aspect-video mb-5 bg-gray-100">
+                <img src={p.image_url} alt={p.title} className="w-full h-full object-cover" />
               </div>
-              <div className="font-black text-lg mb-3">{p.caption || '（无文案）'}</div>
-              <div className="text-gray-700 font-medium mb-4">{new Date(p.created_at).toLocaleString()}</div>
-              <button
-                type="button"
-                disabled={!savedToken}
-                onClick={() => void deletePost(p.id)}
-                className={`brutalist-button brutalist-button-secondary w-full justify-center ${!savedToken ? 'opacity-50 cursor-not-allowed' : ''}`}
-              >
-                <Trash2 size={18} />
-                删除
-              </button>
+              <div className="font-black text-xl mb-2">{p.title}</div>
+              <div className="text-gray-700 font-medium mb-4 line-clamp-2">{p.description}</div>
+              <div className="flex flex-col gap-3">
+                {p.project_url && (
+                  <a 
+                    href={p.project_url} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="brutalist-button brutalist-button-primary w-full justify-center"
+                  >
+                    <Globe size={18} />
+                    查看演示
+                  </a>
+                )}
+                <button
+                  type="button"
+                  disabled={!savedToken}
+                  onClick={() => void deleteProject(p.id)}
+                  className={`brutalist-button brutalist-button-secondary w-full justify-center ${!savedToken ? 'opacity-50 cursor-not-allowed' : ''}`}
+                >
+                  <Trash2 size={18} />
+                  删除
+                </button>
+              </div>
             </div>
           ))}
         </div>
@@ -310,4 +343,3 @@ export const AdminDaily: React.FC = () => {
     </div>
   );
 };
-
