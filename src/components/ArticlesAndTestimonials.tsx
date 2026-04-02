@@ -387,10 +387,6 @@ export const ArticlesAndTestimonials: React.FC = () => {
                     <Calendar size={16} />
                     {new Date(selectedArticle.created_at).toLocaleDateString()}
                   </div>
-                  <div className="flex items-center gap-2 px-4 py-2 bg-white border-2 border-black rounded-full">
-                    <User size={16} />
-                    管理员
-                  </div>
                 </div>
 
                 <h2 className="text-4xl md:text-6xl font-black mb-8 leading-none tracking-tighter">{selectedArticle.title}</h2>
