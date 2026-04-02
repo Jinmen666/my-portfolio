@@ -33,14 +33,60 @@ export const ArticlesAndTestimonials: React.FC = () => {
   const [articles, setArticles] = useState<Article[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedArticle, setSelectedArticle] = useState<Article | null>(null);
+  const [activePanel, setActivePanel] = useState<'content' | 'comments'>('content');
   const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState('');
   const [isLiking, setIsLiking] = useState(false);
   const [isCommenting, setIsCommenting] = useState(false);
+  const [likedIds, setLikedIds] = useState<Set<string>>(() => new Set<string>());
+  const [toast, setToast] = useState<string>('');
+  const pendingArticleIdRef = React.useRef<string | null>(null);
 
   useEffect(() => {
+    try {
+      const raw = localStorage.getItem('liked_article_ids');
+      if (raw) {
+        const parsed: unknown = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          setLikedIds(new Set(parsed.filter(v => typeof v === 'string') as string[]));
+        }
+      }
+    } catch {
+      setLikedIds(new Set<string>());
+    }
+
+    pendingArticleIdRef.current = new URLSearchParams(window.location.search).get('article');
     fetchArticles();
   }, []);
+
+  useEffect(() => {
+    if (!selectedArticle) {
+      document.body.classList.remove('overflow-hidden');
+      return;
+    }
+    document.body.classList.add('overflow-hidden');
+    return () => {
+      document.body.classList.remove('overflow-hidden');
+    };
+  }, [selectedArticle]);
+
+  useEffect(() => {
+    if (!toast) return;
+    const t = window.setTimeout(() => setToast(''), 2000);
+    return () => window.clearTimeout(t);
+  }, [toast]);
+
+  const setLikedIdsPersist = (next: Set<string>) => {
+    setLikedIds(next);
+    localStorage.setItem('liked_article_ids', JSON.stringify(Array.from(next)));
+  };
+
+  const getShareUrl = (articleId: string) => {
+    const url = new URL(window.location.origin);
+    url.searchParams.set('tab', 'articles');
+    url.searchParams.set('article', articleId);
+    return url.toString();
+  };
 
   const fetchArticles = async () => {
     setIsLoading(true);
@@ -50,7 +96,17 @@ export const ArticlesAndTestimonials: React.FC = () => {
         .select('*')
         .order('created_at', { ascending: false });
       if (error) throw error;
-      setArticles(data || []);
+      const list = (data || []) as Article[];
+      setArticles(list);
+
+      const toOpen = pendingArticleIdRef.current;
+      if (toOpen) {
+        const found = list.find(a => a.id === toOpen);
+        if (found) {
+          handleArticleOpen(found, 'content');
+        }
+        pendingArticleIdRef.current = null;
+      }
     } catch (err) {
       console.error('Error fetching articles:', err);
     } finally {
@@ -72,19 +128,46 @@ export const ArticlesAndTestimonials: React.FC = () => {
     }
   };
 
-  const handleArticleClick = (article: Article) => {
+  const handleArticleOpen = (article: Article, panel: 'content' | 'comments' = 'content') => {
     setSelectedArticle(article);
+    setActivePanel(panel);
     fetchComments(article.id);
+    const url = new URL(window.location.href);
+    url.searchParams.set('tab', 'articles');
+    url.searchParams.set('article', article.id);
+    window.history.replaceState({}, '', url.toString());
   };
 
-  const handleLike = async (e: React.MouseEvent, article: Article) => {
+  const handleArticleClose = () => {
+    setSelectedArticle(null);
+    setComments([]);
+    setNewComment('');
+    const url = new URL(window.location.href);
+    url.searchParams.delete('article');
+    window.history.replaceState({}, '', url.toString());
+  };
+
+  const toggleLike = async (e: React.MouseEvent, article: Article) => {
     e.stopPropagation();
     if (isLiking) return;
     setIsLiking(true);
     try {
+      const wasLiked = likedIds.has(article.id);
+      const delta = wasLiked ? -1 : 1;
+      const nextCount = Math.max(0, (article.likes_count || 0) + delta);
+
+      const nextLiked = new Set<string>(likedIds);
+      if (wasLiked) nextLiked.delete(article.id);
+      else nextLiked.add(article.id);
+      setLikedIdsPersist(nextLiked);
+
+      const optimistic: Article = { ...article, likes_count: nextCount };
+      setArticles(prev => prev.map(a => a.id === article.id ? optimistic : a));
+      if (selectedArticle?.id === article.id) setSelectedArticle(optimistic);
+
       const { data, error } = await supabase
         .from('articles')
-        .update({ likes_count: article.likes_count + 1 })
+        .update({ likes_count: nextCount })
         .eq('id', article.id)
         .select()
         .single();
@@ -95,8 +178,10 @@ export const ArticlesAndTestimonials: React.FC = () => {
       if (selectedArticle?.id === article.id) {
         setSelectedArticle(data);
       }
+      setToast(wasLiked ? '已取消点赞' : '已点赞');
     } catch (err) {
       console.error('Error liking article:', err);
+      setToast('点赞失败');
     } finally {
       setIsLiking(false);
     }
@@ -120,18 +205,24 @@ export const ArticlesAndTestimonials: React.FC = () => {
       if (error) throw error;
       setComments(prev => [...prev, data]);
       setNewComment('');
+      setToast('评论已发布');
     } catch (err) {
       console.error('Error posting comment:', err);
+      setToast('评论失败');
     } finally {
       setIsCommenting(false);
     }
   };
 
-  const handleShare = (e: React.MouseEvent, article: Article) => {
+  const handleShare = async (e: React.MouseEvent, article: Article) => {
     e.stopPropagation();
-    const url = window.location.href;
-    navigator.clipboard.writeText(`${url}?article=${article.id}`);
-    alert('链接已复制到剪贴板！');
+    const shareUrl = getShareUrl(article.id);
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setToast('链接已复制');
+    } catch {
+      window.prompt('复制这段链接分享：', shareUrl);
+    }
   };
 
   return (
@@ -205,7 +296,7 @@ export const ArticlesAndTestimonials: React.FC = () => {
             <motion.div
               key={article.id}
               layoutId={`article-${article.id}`}
-              onClick={() => handleArticleClick(article)}
+              onClick={() => handleArticleOpen(article, 'content')}
               className={`brutalist-card p-6 ${article.color} cursor-pointer hover:translate-y-[-4px] transition-transform group`}
             >
               <div className="aspect-video border-4 border-black rounded-2xl overflow-hidden mb-6 bg-gray-100 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
@@ -221,16 +312,22 @@ export const ArticlesAndTestimonials: React.FC = () => {
               <div className="flex items-center justify-between pt-6 border-t-4 border-black/10 mt-auto">
                 <div className="flex items-center gap-4">
                   <button 
-                    onClick={(e) => handleLike(e, article)}
+                    onClick={(e) => toggleLike(e, article)}
                     className="flex items-center gap-1 font-black hover:text-brand-pink transition-colors"
                   >
-                    <Heart size={20} fill={article.likes_count > 0 ? "currentColor" : "none"} />
+                    <Heart size={20} fill={likedIds.has(article.id) ? "currentColor" : "none"} />
                     <span>{article.likes_count}</span>
                   </button>
-                  <div className="flex items-center gap-1 font-black">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleArticleOpen(article, 'comments');
+                    }}
+                    className="flex items-center gap-1 font-black hover:text-brand-blue transition-colors"
+                  >
                     <MessageCircle size={20} />
                     <span>评论</span>
-                  </div>
+                  </button>
                 </div>
                 <button 
                   onClick={(e) => handleShare(e, article)}
@@ -244,6 +341,19 @@ export const ArticlesAndTestimonials: React.FC = () => {
         </div>
       )}
 
+      <AnimatePresence>
+        {!!toast && (
+          <motion.div
+            initial={{ opacity: 0, y: 10, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 10, scale: 0.98 }}
+            className="fixed bottom-28 left-1/2 -translate-x-1/2 z-[120] bg-black text-white border-2 border-white px-4 py-2 rounded-full font-black text-sm"
+          >
+            {toast}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Article Detail Popup */}
       <AnimatePresence>
         {selectedArticle && (
@@ -252,7 +362,7 @@ export const ArticlesAndTestimonials: React.FC = () => {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              onClick={() => setSelectedArticle(null)}
+              onClick={handleArticleClose}
               className="absolute inset-0 bg-black/80 backdrop-blur-sm"
             />
             
@@ -260,9 +370,8 @@ export const ArticlesAndTestimonials: React.FC = () => {
               layoutId={`article-${selectedArticle.id}`}
               className={`relative w-full max-w-4xl max-h-[90vh] overflow-y-auto brutalist-card ${selectedArticle.color} p-0 shadow-[12px_12px_0px_0px_rgba(0,0,0,1)]`}
             >
-              {/* Close Button */}
               <button 
-                onClick={() => setSelectedArticle(null)}
+                onClick={handleArticleClose}
                 className="absolute top-6 right-6 z-10 w-12 h-12 bg-white border-4 border-black rounded-full flex items-center justify-center hover:bg-brand-yellow transition-colors shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-x-[2px] active:translate-y-[2px]"
               >
                 <X size={24} />
@@ -285,29 +394,49 @@ export const ArticlesAndTestimonials: React.FC = () => {
                 </div>
 
                 <h2 className="text-4xl md:text-6xl font-black mb-8 leading-none tracking-tighter">{selectedArticle.title}</h2>
-                
-                <div className="prose prose-xl max-w-none font-bold text-gray-800 leading-relaxed mb-16 whitespace-pre-wrap">
-                  {selectedArticle.content}
+
+                <div className="flex items-center gap-3 mb-10">
+                  <button
+                    onClick={() => setActivePanel('content')}
+                    className={`px-5 py-2 border-4 border-black rounded-full font-black transition-colors ${activePanel === 'content' ? 'bg-black text-white' : 'bg-white hover:bg-brand-yellow'}`}
+                  >
+                    正文
+                  </button>
+                  <button
+                    onClick={() => setActivePanel('comments')}
+                    className={`px-5 py-2 border-4 border-black rounded-full font-black transition-colors ${activePanel === 'comments' ? 'bg-black text-white' : 'bg-white hover:bg-brand-yellow'}`}
+                  >
+                    评论（{comments.length}）
+                  </button>
                 </div>
+
+                {activePanel === 'content' ? (
+                  <div className="prose prose-xl max-w-none font-bold text-gray-800 leading-relaxed mb-16 whitespace-pre-wrap">
+                    {selectedArticle.content}
+                  </div>
+                ) : null}
 
                 {/* Interaction Footer */}
                 <div className="flex flex-wrap items-center justify-between gap-6 py-8 border-y-4 border-black mb-16">
                   <div className="flex items-center gap-8">
                     <button 
-                      onClick={(e) => handleLike(e, selectedArticle)}
+                      onClick={(e) => toggleLike(e, selectedArticle)}
                       className="flex items-center gap-3 text-2xl font-black hover:text-brand-pink transition-colors group"
                     >
                       <Heart 
                         size={32} 
-                        fill={selectedArticle.likes_count > 0 ? "currentColor" : "none"}
+                        fill={likedIds.has(selectedArticle.id) ? "currentColor" : "none"}
                         className="group-hover:scale-125 transition-transform"
                       />
                       <span>{selectedArticle.likes_count} 次点赞</span>
                     </button>
-                    <div className="flex items-center gap-3 text-2xl font-black">
+                    <button
+                      onClick={() => setActivePanel('comments')}
+                      className="flex items-center gap-3 text-2xl font-black hover:text-brand-blue transition-colors"
+                    >
                       <MessageCircle size={32} />
                       <span>{comments.length} 条评论</span>
-                    </div>
+                    </button>
                   </div>
                   <button 
                     onClick={(e) => handleShare(e, selectedArticle)}
@@ -318,52 +447,51 @@ export const ArticlesAndTestimonials: React.FC = () => {
                   </button>
                 </div>
 
-                {/* Comments Section */}
-                <div className="space-y-12">
-                  <h3 className="text-3xl font-black italic">评论区 / COMMENTS</h3>
-                  
-                  {/* Comment Input */}
-                  <form onSubmit={handleCommentSubmit} className="flex flex-col gap-4">
-                    <textarea
-                      value={newComment}
-                      onChange={(e) => setNewComment(e.target.value)}
-                      placeholder="说点什么吧…"
-                      className="w-full p-6 border-4 border-black rounded-2xl font-bold text-lg focus:outline-none focus:ring-8 focus:ring-brand-yellow/20 min-h-[120px] resize-none"
-                    />
-                    <button 
-                      type="submit"
-                      disabled={isCommenting || !newComment.trim()}
-                      className="brutalist-button brutalist-button-primary self-end py-4 px-10 text-xl disabled:opacity-50"
-                    >
-                      {isCommenting ? '发送中...' : '发布评论'}
-                      <Send size={20} />
-                    </button>
-                  </form>
+                {activePanel === 'comments' ? (
+                  <div className="space-y-12">
+                    <h3 className="text-3xl font-black italic">评论区 / COMMENTS</h3>
+                    
+                    <form onSubmit={handleCommentSubmit} className="flex flex-col gap-4">
+                      <textarea
+                        value={newComment}
+                        onChange={(e) => setNewComment(e.target.value)}
+                        placeholder="说点什么吧…"
+                        className="w-full p-6 border-4 border-black rounded-2xl font-bold text-lg focus:outline-none focus:ring-8 focus:ring-brand-yellow/20 min-h-[120px] resize-none"
+                      />
+                      <button 
+                        type="submit"
+                        disabled={isCommenting || !newComment.trim()}
+                        className="brutalist-button brutalist-button-primary self-end py-4 px-10 text-xl disabled:opacity-50"
+                      >
+                        {isCommenting ? '发送中...' : '发布评论'}
+                        <Send size={20} />
+                      </button>
+                    </form>
 
-                  {/* Comment List */}
-                  <div className="space-y-6">
-                    {comments.length === 0 ? (
-                      <div className="p-8 border-4 border-dashed border-black rounded-2xl text-center font-bold text-gray-500 bg-white/50">
-                        还没有评论，快来抢沙发吧！
-                      </div>
-                    ) : (
-                      comments.map((comment) => (
-                        <div key={comment.id} className="brutalist-card bg-white p-6 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
-                          <div className="flex items-center justify-between mb-3">
-                            <div className="flex items-center gap-2">
-                              <div className="w-8 h-8 rounded-full border-2 border-black bg-brand-yellow"></div>
-                              <span className="font-black">访客</span>
-                            </div>
-                            <span className="text-xs font-bold text-gray-500">
-                              {new Date(comment.created_at).toLocaleString()}
-                            </span>
-                          </div>
-                          <p className="font-bold text-gray-800 leading-relaxed">{comment.text}</p>
+                    <div className="space-y-6">
+                      {comments.length === 0 ? (
+                        <div className="p-8 border-4 border-dashed border-black rounded-2xl text-center font-bold text-gray-500 bg-white/50">
+                          还没有评论，快来抢沙发吧！
                         </div>
-                      ))
-                    )}
+                      ) : (
+                        comments.map((comment) => (
+                          <div key={comment.id} className="brutalist-card bg-white p-6 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+                            <div className="flex items-center justify-between mb-3">
+                              <div className="flex items-center gap-2">
+                                <div className="w-8 h-8 rounded-full border-2 border-black bg-brand-yellow"></div>
+                                <span className="font-black">访客</span>
+                              </div>
+                              <span className="text-xs font-bold text-gray-500">
+                                {new Date(comment.created_at).toLocaleString()}
+                              </span>
+                            </div>
+                            <p className="font-bold text-gray-800 leading-relaxed">{comment.text}</p>
+                          </div>
+                        ))
+                      )}
+                    </div>
                   </div>
-                </div>
+                ) : null}
               </div>
             </motion.div>
           </div>

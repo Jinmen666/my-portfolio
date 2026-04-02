@@ -23,6 +23,27 @@ export default function App() {
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [chatMessage, setChatMessage] = useState('');
 
+  React.useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const tab = params.get('tab');
+    if (tab && ['home', 'about', 'works', 'articles', 'daily'].includes(tab)) {
+      setActiveTab(tab);
+    }
+  }, []);
+
+  const setActiveTabWithUrl = (tab: string) => {
+    setActiveTab(tab);
+    const url = new URL(window.location.href);
+    if (tab === 'home') {
+      url.searchParams.delete('tab');
+      url.searchParams.delete('article');
+    } else {
+      url.searchParams.set('tab', tab);
+      if (tab !== 'articles') url.searchParams.delete('article');
+    }
+    window.history.replaceState({}, '', url.toString());
+  };
+
   if (window.location.pathname === '/admin/hub') {
     return <AdminHub />;
   }
@@ -62,8 +83,8 @@ export default function App() {
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.3 }}
           >
-            <Hero onAboutClick={() => setActiveTab('about')} />
-            <Services onTabClick={(id) => setActiveTab(id)} />
+            <Hero onAboutClick={() => setActiveTabWithUrl('about')} />
+            <Services onTabClick={(id) => setActiveTabWithUrl(id)} />
           </motion.div>
         );
       case 'about':
@@ -121,7 +142,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen selection:bg-brand-yellow selection:text-black">
-      <Navbar activeTab={activeTab} setActiveTab={setActiveTab} />
+      <Navbar activeTab={activeTab} setActiveTab={setActiveTabWithUrl} />
       
       <main className="min-h-[80vh]">
         <AnimatePresence mode="wait">
@@ -131,7 +152,7 @@ export default function App() {
 
       <Marquee />
       <Mascot />
-      <Footer setActiveTab={setActiveTab} />
+      <Footer setActiveTab={setActiveTabWithUrl} />
       
       {/* Floating Chat Bubble */}
       <div className="fixed bottom-8 right-8 z-50">
