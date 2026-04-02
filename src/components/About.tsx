@@ -83,8 +83,6 @@ export const About: React.FC = () => {
     fetchData();
   }, []);
 
-  if (isLoading) return <div className="pt-48 pb-20 text-center font-black text-2xl animate-pulse">正在加载数据...</div>;
-
   // Fallback and merging logic
   const defaults = {
     intro_title: 'Welcome to',
